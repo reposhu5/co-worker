@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merged Document</title>
+  <style>
+    .merged-section { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #ddd; }
+    .merged-section:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+<!-- ═══ dashboard.html ═══ -->
+<section class="merged-section">
+<div id="page-transition"></div>
+<div id="page-in"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">Co<span>·</span>Worker</div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar">?</div>
+      <div class="user-name" id="sidebar-name">Loading...</div>
+      <div class="user-role" id="sidebar-role">—</div>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="#" class="active" onclick="showTab('overview',this)"><span class="nav-icon">📊</span>Overview</a></li>
+        <li><a href="#" onclick="showTab('meetings',this)"><span class="nav-icon">📅</span>Meetings</a></li>
+        <li><a href="#" onclick="showTab('notifications',this)"><span class="nav-icon">🔔</span>Notifications</a></li>
+        <li><a href="#" onclick="showTab('profile',this)"><span class="nav-icon">👤</span>Profile</a></li>
+        <li><a href="chat.html" onclick="navigate(event,'chat.html')"><span class="nav-icon">💬</span>Live Chat</a></li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- OVERVIEW TAB -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="page-header">
+        <h1>Good day, <span id="welcome-name">there</span> 👋</h1>
+        <p id="welcome-role">Here's your workspace overview.</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" id="stat-total">0</div><div class="stat-label">Total Meetings</div></div>
+        <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val" id="stat-pending">0</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val" id="stat-confirmed">0</div><div class="stat-label">Confirmed</div></div>
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-val" id="stat-users">0</div><div class="stat-label">Registered Users</div></div>
+      </div>
+
+      <div class="section-title">Upcoming Meetings</div>
+      <div class="meetings-list" id="upcoming-list"></div>
+    </div>
+
+    <!-- MEETINGS TAB -->
+    <div class="tab-content" id="tab-meetings">
+      <div class="page-header">
+        <h1>Meetings</h1>
+        <p>Schedule and manage your meetings.</p>
+      </div>
+      <div class="panel">
+        <div class="section-title">Schedule a Meeting</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>With (Name)</label>
+            <input type="text" id="m-with" placeholder="Name of other party">
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="m-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Time</label>
+            <input type="time" id="m-time">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="m-type">
+              <option>Interview</option>
+              <option>Project Kickoff</option>
+              <option>Performance Review</option>
+              <option>Onboarding</option>
+              <option>General</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Purpose / Agenda</label>
+          <textarea id="m-purpose" placeholder="Brief description of the meeting..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="scheduleMeeting()">📅 Schedule Meeting</button>
+      </div>
+
+      <div class="section-title">All Meetings</div>
+      <div class="meetings-list" id="all-meetings-list"></div>
+    </div>
+
+    <!-- NOTIFICATIONS TAB -->
+    <div class="tab-content" id="tab-notifications">
+      <div class="page-header">
+        <h1>Notifications</h1>
+        <p>Stay up to date with your activity.</p>
+      </div>
+      <div id="notif-list"></div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div class="tab-content" id="tab-profile">
+      <div class="page-header">
+        <h1>My Profile</h1>
+      </div>
+      <div class="profile-card">
+        <div class="profile-avatar" id="profile-avatar">?</div>
+        <div class="profile-info">
+          <h2 id="profile-name">—</h2>
+          <div class="role-tag" id="profile-role">—</div>
+          <p id="profile-email">—</p>
+          <p id="profile-joined" style="margin-top:4px;font-size:12px;color:var(--muted)"></p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="section-title">Edit Profile</div>
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="edit-name">
+        </div>
+        <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentUser = null;
+
+function navigate(e, url) {
+  if(e) e.preventDefault();
+  document.getElementById('page-transition').classList.add('active');
+  setTimeout(() => { window.location.href = url; }, 420);
+}
+
+function logout() {
+  localStorage.removeItem('cw_session');
+  localStorage.removeItem('cw_user');
+  navigate(null,'login.html');
+}
+
+function showTab(tab, link) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(link) link.classList.add('active');
+  if(tab==='meetings') renderMeetings();
+  if(tab==='notifications') renderNotifs();
+  if(tab==='overview') renderOverview();
+}
+
+function getMeetings() { return JSON.parse(localStorage.getItem('cw_meetings') || '[]'); }
+function saveMeetings(m) { localStorage.setItem('cw_meetings', JSON.stringify(m)); }
+function getNotifs() { return JSON.parse(localStorage.getItem('cw_notifs') || '[]'); }
+function addNotif(msg) {
+  const n = getNotifs();
+  n.unshift({ msg, time: new Date().toLocaleString(), id: Date.now() });
+  localStorage.setItem('cw_notifs', JSON.stringify(n.slice(0,20)));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function scheduleMeeting() {
+  const withPerson = document.getElementById('m-with').value.trim();
+  const date = document.getElementById('m-date').value;
+  const time = document.getElementById('m-time').value;
+  const type = document.getElementById('m-type').value;
+  const purpose = document.getElementById('m-purpose').value.trim();
+  if(!withPerson || !date || !time) { showToast('⚠️ Fill in all required fields'); return; }
+  const meetings = getMeetings();
+  const m = { id: Date.now().toString(), createdBy: currentUser.id, createdByName: currentUser.name, withPerson, date, time, type, purpose, status: 'pending', createdAt: new Date().toISOString() };
+  meetings.push(m);
+  saveMeetings(meetings);
+  addNotif(`New meeting scheduled with ${withPerson} on ${date} at ${time}`);
+  document.getElementById('m-with').value = '';
+  document.getElementById('m-date').value = '';
+  document.getElementById('m-time').value = '';
+  document.getElementById('m-purpose').value = '';
+  showToast('✅ Meeting scheduled!');
+  renderOverview();
+}
+
+function updateStatus(id, status) {
+  const meetings = getMeetings();
+  const m = meetings.find(x => x.id === id);
+  if(m) { m.status = status; saveMeetings(meetings); addNotif(`Meeting with ${m.withPerson} ${status}`); renderMeetings(); renderOverview(); showToast(status==='confirmed'?'✅ Meeting confirmed':'❌ Meeting declined'); }
+}
+
+function deleteMeeting(id) {
+  const meetings = getMeetings().filter(x => x.id !== id);
+  saveMeetings(meetings);
+  renderMeetings(); renderOverview();
+  showToast('🗑 Meeting removed');
+}
+
+function meetingCard(m, showActions=false) {
+  const statusClass = { pending:'badge-pending', confirmed:'badge-confirmed', declined:'badge-declined' }[m.status] || 'badge-pending';
+  const actions = showActions && m.status === 'pending' ? `
+    <div class="action-btns">
+      <button class="btn-sm btn-approve" onclick="updateStatus('${m.id}','confirmed')">✓ Confirm</button>
+      <button class="btn-sm btn-decline" onclick="updateStatus('${m.id}','declined')">✗ Decline</button>
+    </div>` : '';
+  return `<div class="meeting-item">
+    <div class="meeting-info">
+      <h4>${m.type} — with ${m.withPerson}</h4>
+      <p>📅 ${m.date} at ${m.time} · ${m.purpose || 'No agenda set'}</p>
+    </div>
+    <div class="meeting-meta">
+      ${actions}
+      <span class="badge ${statusClass}">${m.status}</span>
+      <button class="btn-sm btn-delete" onclick="deleteMeeting('${m.id}')">🗑</button>
+    </div>
+  </div>`;
+}
+
+function renderOverview() {
+  const meetings = getMeetings();
+  const users = JSON.parse(localStorage.getItem('cw_users') || '[]');
+  const my = meetings.filter(m => m.createdBy === currentUser.id);
+  document.getElementById('stat-total').textContent = my.length;
+  document.getElementById('stat-pending').textContent = my.filter(m=>m.status==='pending').length;
+  document.getElementById('stat-confirmed').textContent = my.filter(m=>m.status==='confirmed').length;
+  document.getElementById('stat-users').textContent = users.length;
+  const list = document.getElementById('upcoming-list');
+  const upcoming = my.filter(m=>m.status!=='declined').slice(0,5);
+  list.innerHTML = upcoming.length ? upcoming.map(m=>meetingCard(m)).join('') : '<div class="empty-state"><div class="empty-icon">📭</div><p>No upcoming meetings. Schedule one!</p></div>';
+}
+
+function renderMeetings() {
+  const meetings = getMeetings().filter(m => m.createdBy === currentUser.id);
+  const list = document.getElementById('all-meetings-list');
+  list.innerHTML = meetings.length ? meetings.map(m=>meetingCard(m,true)).join('') : '<div class="empty-state"><div class="empty-icon">📭</div><p>No meetings yet.</p></div>';
+}
+
+function renderNotifs() {
+  const n = getNotifs();
+  document.getElementById('notif-list').innerHTML = n.length ? n.map(x=>`<div class="notif-item"><span class="notif-text">${x.msg}</span><span class="notif-time">${x.time}</span></div>`).join('') : '<div class="empty-state"><div class="empty-icon">🔔</div><p>No notifications yet.</p></div>';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { document.getElementById('page-in').style.transform = 'translateY(-100%)'; }, 50);
+  const session = localStorage.getItem('cw_session');
+  if(!session) { navigate(null,'login.html'); return; }
+  currentUser = JSON.parse(localStorage.getItem('cw_user') || 'null');
+  if(!currentUser) { navigate(null,'login.html'); return; }
+
+  const initials = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('sidebar-avatar').textContent = initials;
+  document.getElementById('sidebar-name').textContent = currentUser.name;
+  document.getElementById('sidebar-role').textContent = currentUser.role;
+  document.getElementById('welcome-name').textContent = currentUser.name.split(' ')[0];
+  document.getElementById('welcome-role').textContent = `You're logged in as ${currentUser.role}.`;
+  document.getElementById('profile-avatar').textContent = initials;
+  document.getElementById('profile-name').textContent = currentUser.name;
+  document.getElementById('profile-role').textContent = currentUser.role;
+  document.getElementById('profile-email').textContent = currentUser.email;
+  document.getElementById('profile-joined').textContent = 'Joined ' + new Date(currentUser.createdAt).toLocaleDateString();
+  document.getElementById('edit-name').value = currentUser.name;
+  renderOverview();
+
+  // Set min date on meeting form
+  document.getElementById('m-date').min = new Date().toISOString().split('T')[0];
+});
+
+function saveProfile() {
+  const name = document.getElementById('edit-name').value.trim();
+  if(!name) return;
+  currentUser.name = name;
+  localStorage.setItem('cw_user', JSON.stringify(currentUser));
+  const users = JSON.parse(localStorage.getItem('cw_users') || '[]');
+  const idx = users.findIndex(u => u.id === currentUser.id);
+  if(idx>=0) { users[idx].name = name; localStorage.setItem('cw_users', JSON.stringify(users)); }
+  document.getElementById('profile-name').textContent = name;
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('welcome-name').textContent = name.split(' ')[0];
+  showToast('✅ Profile updated!');
+}
+</script>
+</section>
+
+<!-- ═══ register.html ═══ -->
+<section class="merged-section">
+<div id="page-transition"></div>
+<div id="page-in"></div>
+
+<nav>
+  <a href="index.html" onclick="navigate(event,'index.html')" class="logo">Co<span>·</span>Worker</a>
+  <a href="index.html" onclick="navigate(event,'index.html')" class="back-link">← Back to Home</a>
+</nav>
+
+<main>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-icon">👋</div>
+        <h1>Create your account</h1>
+        <p>Already have one? <a href="login.html" onclick="navigate(event,'login.html')">Sign in</a></p>
+      </div>
+
+      <div class="role-picker">
+        <div class="role-btn active" id="role-employer" onclick="setRole('Employer')">
+          <div class="role-icon">🏢</div>
+          <div class="role-label">Employer</div>
+          <div class="role-desc">Hire & manage talent</div>
+        </div>
+        <div class="role-btn" id="role-employee" onclick="setRole('Employee')">
+          <div class="role-icon">👨‍💻</div>
+          <div class="role-label">Employee</div>
+          <div class="role-desc">Find opportunities</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="Jane Smith" oninput="clearErr('name')">
+        <div class="error-msg" id="name-err">Please enter your full name</div>
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="jane@company.com" oninput="clearErr('email')">
+        <div class="error-msg" id="email-err">Please enter a valid email</div>
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" id="password" placeholder="Min 6 characters" oninput="checkStrength()">
+          <button class="toggle-pw" type="button" onclick="togglePw('password',this)">👁</button>
+        </div>
+        <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        <div class="error-msg" id="password-err">Password must be at least 6 characters</div>
+      </div>
+
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <div class="password-wrap">
+          <input type="password" id="confirm" placeholder="Repeat password">
+          <button class="toggle-pw" type="button" onclick="togglePw('confirm',this)">👁</button>
+        </div>
+        <div class="error-msg" id="confirm-err">Passwords do not match</div>
+      </div>
+
+      <button class="submit-btn" onclick="register()">Create Account</button>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let selectedRole = 'Employer';
+
+function setRole(role) {
+  selectedRole = role;
+  document.getElementById('role-employer').classList.toggle('active', role === 'Employer');
+  document.getElementById('role-employee').classList.toggle('active', role === 'Employee');
+}
+
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  if(inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function checkStrength() {
+  const pw = document.getElementById('password').value;
+  const fill = document.getElementById('strength-fill');
+  const len = pw.length;
+  let strength = 0;
+  if(len >= 6) strength++;
+  if(len >= 10) strength++;
+  if(/[A-Z]/.test(pw)) strength++;
+  if(/[0-9]/.test(pw)) strength++;
+  if(/[^A-Za-z0-9]/.test(pw)) strength++;
+  const colors = ['','#f87171','#fb923c','#facc15','#4ade80','#38bdf8'];
+  const widths = ['0%','20%','40%','60%','80%','100%'];
+  fill.style.width = widths[strength];
+  fill.style.background = colors[strength] || colors[1];
+}
+
+function clearErr(id) {
+  document.getElementById(id).classList.remove('error');
+  document.getElementById(id+'-err').classList.remove('show');
+}
+
+function showErr(id, msg) {
+  document.getElementById(id).classList.add('error');
+  const el = document.getElementById(id+'-err');
+  if(msg) el.textContent = msg;
+  el.classList.add('show');
+  return false;
+}
+
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError?' error-toast':'') + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function register() {
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const confirm = document.getElementById('confirm').value;
+  let valid = true;
+
+  if(!name) { showErr('name'); valid = false; }
+  if(!email || !email.includes('@')) { showErr('email'); valid = false; }
+  if(password.length < 6) { showErr('password'); valid = false; }
+  if(password !== confirm) { showErr('confirm'); valid = false; }
+  if(!valid) return;
+
+  // Check if email exists
+  const users = JSON.parse(localStorage.getItem('cw_users') || '[]');
+  if(users.find(u => u.email === email)) {
+    showErr('email', 'This email is already registered'); return;
+  }
+
+  const newUser = {
+    id: Date.now().toString(),
+    name, email, password,
+    role: selectedRole,
+    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=0d1424&textColor=38bdf8`,
+    createdAt: new Date().toISOString()
+  };
+
+  users.push(newUser);
+  localStorage.setItem('cw_users', JSON.stringify(users));
+
+  // Auto-login
+  const sessionUser = { ...newUser };
+  delete sessionUser.password;
+  localStorage.setItem('cw_user', JSON.stringify(sessionUser));
+  localStorage.setItem('cw_session', JSON.stringify({ userId: newUser.id, loginTime: Date.now() }));
+
+  showToast('🎉 Account created! Redirecting...');
+  setTimeout(() => navigate(null, 'dashboard.html'), 1400);
+}
+
+function navigate(e, url) {
+  if(e) e.preventDefault();
+  const overlay = document.getElementById('page-transition');
+  overlay.classList.add('active');
+  setTimeout(() => { window.location.href = url; }, 420);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { document.getElementById('page-in').style.transform = 'translateY(-100%)'; }, 50);
+  // Redirect if already logged in
+  if(localStorage.getItem('cw_session')) navigate(null,'dashboard.html');
+});
+</script>
+</section>
+
+<!-- ═══ login.html ═══ -->
+<section class="merged-section">
+<div id="page-transition"></div>
+<div id="page-in"></div>
+
+<nav>
+  <a href="index.html" onclick="navigate(event,'index.html')" class="logo">Co<span>·</span>Worker</a>
+  <a href="index.html" onclick="navigate(event,'index.html')" class="back-link">← Back to Home</a>
+</nav>
+
+<main>
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-icon">🔐</div>
+      <h1>Welcome back</h1>
+      <p>No account? <a href="register.html" onclick="navigate(event,'register.html')">Create one free</a></p>
+    </div>
+
+    <div class="global-error" id="global-error">Invalid email or password. Please try again.</div>
+
+    <div class="demo-hint">
+      💡 <strong>Demo:</strong> <a onclick="fillDemo('employer')">Use Employer demo</a> or <a onclick="fillDemo('employee')">Employee demo</a>
+    </div>
+
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="email" placeholder="you@email.com" oninput="clearGlobal()">
+      <div class="error-msg" id="email-err">Enter a valid email</div>
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <div class="password-wrap">
+        <input type="password" id="password" placeholder="Your password" oninput="clearGlobal()">
+        <button class="toggle-pw" type="button" onclick="togglePw()">👁</button>
+      </div>
+      <div class="form-footer"><a>Forgot password?</a></div>
+    </div>
+
+    <button class="submit-btn" onclick="login()">Sign In →</button>
+
+    <div class="divider"><span>or</span></div>
+    <button class="demo-btn" onclick="fillDemo('employer')">🏢 Continue as Employer Demo</button>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function togglePw() {
+  const inp = document.getElementById('password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function clearGlobal() {
+  document.getElementById('global-error').classList.remove('show');
+  document.getElementById('email').classList.remove('error');
+  document.getElementById('password').classList.remove('error');
+}
+
+function fillDemo(type) {
+  ensureDemoAccounts();
+  if(type === 'employer') {
+    document.getElementById('email').value = 'employer@demo.com';
+    document.getElementById('password').value = 'demo123';
+  } else {
+    document.getElementById('email').value = 'employee@demo.com';
+    document.getElementById('password').value = 'demo123';
+  }
+}
+
+function ensureDemoAccounts() {
+  let users = JSON.parse(localStorage.getItem('cw_users') || '[]');
+  const demos = [
+    { id:'demo-emp1', name:'Alex (Demo Employer)', email:'employer@demo.com', password:'demo123', role:'Employer', avatar:'', createdAt:new Date().toISOString() },
+    { id:'demo-emp2', name:'Sam (Demo Employee)', email:'employee@demo.com', password:'demo123', role:'Employee', avatar:'', createdAt:new Date().toISOString() }
+  ];
+  demos.forEach(d => { if(!users.find(u => u.email === d.email)) users.push(d); });
+  localStorage.setItem('cw_users', JSON.stringify(users));
+}
+
+function login() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  if(!email || !email.includes('@')) {
+    document.getElementById('email').classList.add('error');
+    document.getElementById('email-err').classList.add('show');
+    return;
+  }
+
+  ensureDemoAccounts();
+  const users = JSON.parse(localStorage.getItem('cw_users') || '[]');
+  const user = users.find(u => u.email === email && u.password === password);
+
+  if(!user) {
+    document.getElementById('global-error').classList.add('show');
+    document.getElementById('email').classList.add('error');
+    document.getElementById('password').classList.add('error');
+    return;
+  }
+
+  const sessionUser = { ...user };
+  delete sessionUser.password;
+  localStorage.setItem('cw_user', JSON.stringify(sessionUser));
+  localStorage.setItem('cw_session', JSON.stringify({ userId: user.id, loginTime: Date.now() }));
+
+  showToast('✅ Welcome back, ' + user.name.split(' ')[0] + '!');
+  setTimeout(() => navigate(null, 'dashboard.html'), 1200);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function navigate(e, url) {
+  if(e) e.preventDefault();
+  document.getElementById('page-transition').classList.add('active');
+  setTimeout(() => { window.location.href = url; }, 420);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { document.getElementById('page-in').style.transform = 'translateY(-100%)'; }, 50);
+  if(localStorage.getItem('cw_session')) navigate(null,'dashboard.html');
+});
+
+document.addEventListener('keydown', e => { if(e.key === 'Enter') login(); });
+</script>
+</section>
+
+<!-- ═══ index (6).html ═══ -->
+<section class="merged-section">
+<div id="page-transition"></div>
+
+<nav>
+  <div class="logo">Co<span>·</span>Worker</div>
+  <ul>
+    <li><a href="#features">Features</a></li>
+    <li><a href="dashboard.html" onclick="navigate(event,'dashboard.html')">Dashboard</a></li>
+    <li><a href="chat.html" onclick="navigate(event,'chat.html')">Chat</a></li>
+    <li><a href="login.html" onclick="navigate(event,'login.html')" id="nav-login-link">Login</a></li>
+    <li><a href="register.html" onclick="navigate(event,'register.html')" class="nav-cta" id="nav-reg-link">Get Started</a></li>
+  </ul>
+  <div class="nav-user" id="nav-user">
+    <span id="nav-user-name"></span>
+    <button onclick="logout()">Sign out</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge">Now with real-time collaboration</div>
+  <h1>Where <span class="sky">Employers</span><br>Meet <span class="pink">Talent</span></h1>
+  <p>A modern professional platform for scheduling meetings, live chat, and managing your workforce — all in one place.</p>
+  <div class="hero-btns">
+    <button class="btn-primary" onclick="navigate(null,'register.html')">Start for Free</button>
+    <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See Features</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">2.4k+</div><div class="stat-label">Active Users</div></div>
+    <div class="stat"><div class="stat-num">98%</div><div class="stat-label">Satisfaction Rate</div></div>
+    <div class="stat"><div class="stat-num">14k+</div><div class="stat-label">Meetings Held</div></div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="section-label">Platform Features</div>
+  <div class="section-title">Everything you need<br>to collaborate</div>
+  <div class="features-grid">
+    <div class="feat-card" style="animation-delay:0s">
+      <div class="feat-icon">🔐</div>
+      <h3>Real Auth System</h3>
+      <p>Secure login and registration with localStorage persistence. Role-based access for Employers and Employees.</p>
+    </div>
+    <div class="feat-card" style="animation-delay:0.1s">
+      <div class="feat-icon">💬</div>
+      <h3>Live Chat</h3>
+      <p>WebSocket-style real-time messaging with chat history, timestamps, and message bubbles.</p>
+    </div>
+    <div class="feat-card" style="animation-delay:0.2s">
+      <div class="feat-icon">📅</div>
+      <h3>Meeting Scheduler</h3>
+      <p>Book, manage, and track meetings with calendar integration and status updates.</p>
+    </div>
+    <div class="feat-card" style="animation-delay:0.3s">
+      <div class="feat-icon">📊</div>
+      <h3>Admin Dashboard</h3>
+      <p>Full oversight of users, meetings, and activity with live stats and notification centre.</p>
+    </div>
+    <div class="feat-card" style="animation-delay:0.4s">
+      <div class="feat-icon">🎥</div>
+      <h3>Video Room</h3>
+      <p>Launch your webcam for face-to-face meetings directly in the browser, no plugins needed.</p>
+    </div>
+    <div class="feat-card" style="animation-delay:0.5s">
+      <div class="feat-icon">✨</div>
+      <h3>Smooth Transitions</h3>
+      <p>Cinematic page animations make every navigation feel polished and professional.</p>
+    </div>
+  </div>
+</section>
+
+<section class="how">
+  <div class="section-label">How It Works</div>
+  <div class="section-title">Three steps to connect</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <h3>Create your account</h3>
+      <p>Register as an Employer or Employee. Your profile and session are stored securely.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <h3>Schedule meetings</h3>
+      <p>Employers post meeting requests. Employees confirm or propose new times.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <h3>Collaborate live</h3>
+      <p>Use real-time chat and video rooms to connect, discuss, and close deals.</p>
+    </div>
+  </div>
+</section>
+
+<div class="cta-banner">
+  <h2>Ready to build your<br>dream team?</h2>
+  <p>Join thousands of professionals already using Co-Worker.</p>
+  <button class="btn-primary" onclick="navigate(null,'register.html')">Create Free Account →</button>
+</div>
+
+<footer>
+  <div class="logo">Co<span>·</span>Worker</div>
+  <p>© 2026 Co-Worker Platform. All rights reserved.</p>
+  <nav><ul>
+    <li><a href="login.html" onclick="navigate(event,'login.html')">Login</a></li>
+    <li><a href="register.html" onclick="navigate(event,'register.html')">Register</a></li>
+  </ul></nav>
+</footer>
+
+<script>
+function navigate(e, url) {
+  if(e) e.preventDefault();
+  const overlay = document.getElementById('page-transition');
+  overlay.classList.add('active');
+  setTimeout(() => { window.location.href = url; }, 420);
+}
+
+// Check auth state
+window.addEventListener('DOMContentLoaded', () => {
+  const user = JSON.parse(localStorage.getItem('cw_user') || 'null');
+  if (user) {
+    document.getElementById('nav-user-name').textContent = user.name;
+    document.getElementById('nav-user').classList.add('show');
+    document.getElementById('nav-login-link').style.display = 'none';
+    document.getElementById('nav-reg-link').style.display = 'none';
+  }
+  // Fade in on arrival
+  setTimeout(() => {
+    document.getElementById('page-transition').style.transform = 'translateY(100%)';
+  }, 50);
+});
+
+function logout() {
+  localStorage.removeItem('cw_session');
+  localStorage.removeItem('cw_user');
+  location.reload();
+}
+</script>
+</section>
+</body>
+</html>
